@@ -24,7 +24,7 @@ const userModes = {};
 function toBoldDigits(numStr) {
   const boldMap = {
     '0': '𝟬', '1': '𝟭', '2': '𝟮', '3': '𝟯', '4': '𝟰',
-    '5': '𝟱', '6': '𝟲', '7': '𝟳', '8': '𝟴', '9': '𝟡'
+    '5': '𝟱', '6': '𝟲', '7': '𝟳', '8': '𝟴', '9'
   };
   return numStr.split('').map(ch => boldMap[ch] || ch).join('');
 }
@@ -33,7 +33,7 @@ function toBoldDigits(numStr) {
 bot.start((ctx) => {
   ctx.reply(
     "বট অ্যাক্টিভ আছে!\n\n" +
-    "⚙️ *মোড পরিবর্তন করতে:*\n" +
+    "⚙️ মোড পরিবর্তন করতে:\n" +
     "• /v1 - Instant Copy Text (🟢 1-Tap Copy)\n" +
     "• /v2 - Callback Mode (ট্যাপ করলে ✅ চিহ্ন হবে & Alert দেবে)\n\n" +
     "যেকোনো নম্বরযুক্ত মেসেজ ফরওয়ার্ড করুন।"
