@@ -1,7 +1,7 @@
 const { Telegraf, Markup } = require('telegraf');
 const express = require('express');
 
-// ১. Render-কে ২৪/৭ চালু রাখার জন্য Express Web Server
+// ১. Render Web Server (Sleep Mode ঠেকানোর জন্য)
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -17,10 +17,10 @@ app.listen(PORT, '0.0.0.0', () => {
 const BOT_TOKEN = '8928009450:AAF1kacThOZUMgnD9yBHSlcUvA1yINLBpGA';
 const bot = new Telegraf(BOT_TOKEN);
 
-// মোড ট্র্যাক করার জন্য অবজেক্ট (Default: V1 - Ultra Fast Copy)
+// ইউজারদের মোড ট্র্যাক রাখা (Default: V1)
 const userModes = {};
 
-// নম্বরকে Unicode Bold-এ রূপান্তর করার ফাংশন
+// নম্বরকে Unicode Bold-এ রূপান্তর করার হেলপার ফাংশন
 function toBoldDigits(numStr) {
   const boldMap = {
     '0': '𝟬', '1': '𝟭', '2': '𝟮', '3': '𝟯', '4': '𝟰',
@@ -33,28 +33,28 @@ function toBoldDigits(numStr) {
 bot.start((ctx) => {
   ctx.reply(
     "বট অ্যাক্টিভ আছে!\n\n" +
-    "⚙️ মোড পরিবর্তন করতে:\n" +
-    "• /v1 - Instant Copy & Green Dot (Default)\n" +
-    "• /v2 - Switch Inline Query Mode (Python style)\n\n" +
-    "যেকোনো নম্বরযুক্ত মেসেজ পাঠালে বা ফরওয়ার্ড করলে বাটন তৈরি হয়ে যাবে।"
+    "⚙️ *মোড পরিবর্তন করতে:*\n" +
+    "• /v1 - Instant Copy Text (🟢 1-Tap Copy)\n" +
+    "• /v2 - Callback Mode (ট্যাপ করলে ✅ চিহ্ন হবে & Alert দেবে)\n\n" +
+    "যেকোনো নম্বরযুক্ত মেসেজ ফরওয়ার্ড করুন।"
   );
 });
 
-// /v1 কমান্ড: Fast Copy Mode সেট করা
+// /v1 কমান্ড: Instant Copy Mode
 bot.command('v1', (ctx) => {
   const userId = ctx.from.id;
   userModes[userId] = 'v1';
-  ctx.reply('✅ Mode switched to V1: Instant Copy Text with Green Dot 🟢');
+  ctx.reply('✅ Mode switched to V1: Instant Copy (🟢 Button)');
 });
 
-// /v2 কমান্ড: Python Switch Inline Query Mode সেট করা
+// /v2 কমান্ড: Callback & Click Check Mode
 bot.command('v2', (ctx) => {
   const userId = ctx.from.id;
   userModes[userId] = 'v2';
-  ctx.reply('✅ Mode switched to V2: Switch Inline Query (Python Script Style) 🔄');
+  ctx.reply('✅ Mode switched to V2: Callback Tracking Mode (📋 -> ✅ Checkmark)');
 });
 
-// মেসেজ থেকে নম্বর ফিল্টার ও মোড অনুযায়ী বাটন পাঠানো
+// মেসেজ থেকে নম্বর ফিল্টার ও মোড অনুযায়ী বাটন তৈরি
 bot.on('text', async (ctx) => {
   const userId = ctx.from.id;
   const currentMode = userModes[userId] || 'v1';
@@ -67,24 +67,26 @@ bot.on('text', async (ctx) => {
     return ctx.reply('কোনো ফোন নম্বর পাওয়া যায়নি।');
   }
 
-  // Duplicate নম্বর ফিল্টার করে '+' বাদ দেওয়া
+  // Duplicate নম্বর বাদ দিয়ে '+' রিমুভ করা
   const cleanNumbers = [...new Set(rawNumbers.map((num) => num.replace(/^\+/, '')))];
 
   let buttons = [];
 
   if (currentMode === 'v2') {
-    // V2: Python scripts-এর মতো switch_inline_query_current_chat স্টাইল
-    buttons = cleanNumbers.map((num) => [
-      Markup.button.switchToCurrentChat(num, num)
-    ]);
-  } else {
-    // V1: 1-Tap Copy Text & Green Dot স্টাইল
+    // V2: Callback Button (ট্যাপ করলে সার্ভারে রিকোয়েস্ট আসবে এবং ✅ হবে)
     buttons = cleanNumbers.map((num, index) => {
       const boldNum = toBoldDigits(num);
-      const buttonText = `${index + 1}. ${boldNum} 🟢`;
+      return [
+        Markup.button.callback(`📋 ${index + 1}. ${boldNum}`, `v2_copied_${num}_${index + 1}`)
+      ];
+    });
+  } else {
+    // V1: Instant Copy Text
+    buttons = cleanNumbers.map((num, index) => {
+      const boldNum = toBoldDigits(num);
       return [
         {
-          text: buttonText,
+          text: `${index + 1}. ${boldNum} 🟢`,
           copy_text: { text: num }
         }
       ];
@@ -94,9 +96,34 @@ bot.on('text', async (ctx) => {
   await ctx.reply('কপি করতে নিচের বাটনে চাপ দিন:', Markup.inlineKeyboard(buttons));
 });
 
-// বট চালু করা
+// V2 Mode-এর বাটনে চাপ দিলে Callback হ্যান্ডেল করা
+bot.action(/^v2_copied_(.+)_(.+)$/, async (ctx) => {
+  const cleanNum = ctx.match[1];
+  const serial = ctx.match[2];
+  const boldNum = toBoldDigits(cleanNum);
+
+  // ১. ক্লিক করা বাটনটি আপডেট করে '✅' করে দেওয়া
+  const currentKeyboard = ctx.callbackQuery.message.reply_markup.inline_keyboard;
+
+  const updatedKeyboard = currentKeyboard.map((row) => {
+    return row.map((btn) => {
+      if (btn.callback_data === `v2_copied_${cleanNum}_${serial}`) {
+        return Markup.button.callback(`✅ ${serial}. ${boldNum}`, `v2_copied_${cleanNum}_${serial}`);
+      }
+      return btn;
+    });
+  });
+
+  // UI সাথে সাথে আপডেট করা
+  await ctx.editMessageReplyMarkup({ inline_keyboard: updatedKeyboard }).catch(() => {});
+
+  // ২. পপআপ অ্যালার্ট দেওয়া
+  await ctx.answerCbQuery(`ক্লিক করা হয়েছে: ${cleanNum}`, { show_alert: false });
+});
+
+// বট স্টার্ট
 bot.launch().then(() => {
-  console.log('Telegram Bot running with V1 and V2 modes!');
+  console.log('Bot running successfully in V1 and V2 modes!');
 }).catch((err) => {
   console.error('Error starting bot:', err);
 });
