@@ -1,7 +1,7 @@
 const { Telegraf, Markup } = require('telegraf');
 const express = require('express');
 
-// ১. Render Web Server (Sleep Mode ঠেকানোর জন্য)
+// ১. Render Server Active রাখার জন্য Express Web Server
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -20,11 +20,11 @@ const bot = new Telegraf(BOT_TOKEN);
 // ইউজারদের মোড ট্র্যাক রাখা (Default: V1)
 const userModes = {};
 
-// নম্বরকে Unicode Bold-এ রূপান্তর করার হেলপার ফাংশন
+// V2 মোডের জন্য Unicode Bold-এ রূপান্তর করার হেলপার ফাংশন
 function toBoldDigits(numStr) {
   const boldMap = {
     '0': '𝟬', '1': '𝟭', '2': '𝟮', '3': '𝟯', '4': '𝟰',
-    '5': '𝟱', '6': '𝟲', '7': '𝟳', '8': '𝟴', '9'
+    '5': '𝟱', '6': '𝟲', '7': '𝟳', '8': '𝟴', '9': '𝟡'
   };
   return numStr.split('').map(ch => boldMap[ch] || ch).join('');
 }
@@ -33,18 +33,18 @@ function toBoldDigits(numStr) {
 bot.start((ctx) => {
   ctx.reply(
     "বট অ্যাক্টিভ আছে!\n\n" +
-    "⚙️ মোড পরিবর্তন করতে:\n" +
-    "• /v1 - Instant Copy Text (🟢 1-Tap Copy)\n" +
-    "• /v2 - Callback Mode (ট্যাপ করলে ✅ চিহ্ন হবে & Alert দেবে)\n\n" +
+    "⚙️ *মোড পরিবর্তন করতে:*\n" +
+    "• /v1 - Instant Copy Text (Normal Font & 🟢 Button)\n" +
+    "• /v2 - Callback Mode (Bold Font, ✅ Checkmark & Alert)\n\n" +
     "যেকোনো নম্বরযুক্ত মেসেজ ফরওয়ার্ড করুন।"
   );
 });
 
-// /v1 কমান্ড: Instant Copy Mode
+// /v1 কমান্ড: Normal Font Instant Copy Mode
 bot.command('v1', (ctx) => {
   const userId = ctx.from.id;
   userModes[userId] = 'v1';
-  ctx.reply('✅ Mode switched to V1: Instant Copy (🟢 Button)');
+  ctx.reply('✅ Mode switched to V1: Instant Copy (Normal Font & 🟢 Button)');
 });
 
 // /v2 কমান্ড: Callback & Click Check Mode
@@ -73,7 +73,7 @@ bot.on('text', async (ctx) => {
   let buttons = [];
 
   if (currentMode === 'v2') {
-    // V2: Callback Button (ট্যাপ করলে সার্ভারে রিকোয়েস্ট আসবে এবং ✅ হবে)
+    // V2: Callback Button (Bold Text + ✅ Checkmark)
     buttons = cleanNumbers.map((num, index) => {
       const boldNum = toBoldDigits(num);
       return [
@@ -81,12 +81,11 @@ bot.on('text', async (ctx) => {
       ];
     });
   } else {
-    // V1: Instant Copy Text
+    // V1: Instant Copy Text (Normal Font)
     buttons = cleanNumbers.map((num, index) => {
-      const boldNum = toBoldDigits(num);
       return [
         {
-          text: `${index + 1}. ${boldNum} 🟢`,
+          text: `${index + 1}. ${num} 🟢`,
           copy_text: { text: num }
         }
       ];
@@ -102,7 +101,7 @@ bot.action(/^v2_copied_(.+)_(.+)$/, async (ctx) => {
   const serial = ctx.match[2];
   const boldNum = toBoldDigits(cleanNum);
 
-  // ১. ক্লিক করা বাটনটি আপডেট করে '✅' করে দেওয়া
+  // ক্লিক করা বাটনটি আপডেট করে '✅' করে দেওয়া
   const currentKeyboard = ctx.callbackQuery.message.reply_markup.inline_keyboard;
 
   const updatedKeyboard = currentKeyboard.map((row) => {
@@ -114,16 +113,16 @@ bot.action(/^v2_copied_(.+)_(.+)$/, async (ctx) => {
     });
   });
 
-  // UI সাথে সাথে আপডেট করা
+  // UI আপডেট
   await ctx.editMessageReplyMarkup({ inline_keyboard: updatedKeyboard }).catch(() => {});
 
-  // ২. পপআপ অ্যালার্ট দেওয়া
+  // কুইক পপআপ
   await ctx.answerCbQuery(`ক্লিক করা হয়েছে: ${cleanNum}`, { show_alert: false });
 });
 
 // বট স্টার্ট
 bot.launch().then(() => {
-  console.log('Bot running successfully in V1 and V2 modes!');
+  console.log('Bot running successfully with updated V1 normal font!');
 }).catch((err) => {
   console.error('Error starting bot:', err);
 });
