@@ -1,7 +1,7 @@
 {
-  "name": "telegram-instant-copy-bot",
+  "name": "telegram-fast-number-bot",
   "version": "1.0.0",
-  "description": "Ultra fast zero-delay phone number copy bot for Render",
+  "description": "Multi-mode phone number copy Telegram bot for Render",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
