@@ -1,7 +1,7 @@
 const { Telegraf, Markup } = require('telegraf');
 const express = require('express');
 
-// 1. Render Web Server
+// ১. Render-কে ২৪/৭ চালু রাখার জন্য Express Web Server
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -9,11 +9,11 @@ app.get('/', (req, res) => {
   res.send('Bot is running ultra fast 24/7!');
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Web server listening on port ${PORT}`);
 });
 
-// 2. Telegram Bot Setup
+// ২. টেলিগ্রাম বট কনফিগারেশন
 const BOT_TOKEN = '8928009450:AAF1kacThOZUMgnD9yBHSlcUvA1yINLBpGA';
 const bot = new Telegraf(BOT_TOKEN);
 
@@ -33,7 +33,7 @@ function toBoldDigits(numStr) {
 bot.start((ctx) => {
   ctx.reply(
     "বট অ্যাক্টিভ আছে!\n\n" +
-    "⚙️ *মোড পরিবর্তন করতে:*\n" +
+    "⚙️ মোড পরিবর্তন করতে:\n" +
     "• /v1 - Instant Copy & Green Dot (Default)\n" +
     "• /v2 - Switch Inline Query Mode (Python style)\n\n" +
     "যেকোনো নম্বরযুক্ত মেসেজ পাঠালে বা ফরওয়ার্ড করলে বাটন তৈরি হয়ে যাবে।"
@@ -57,7 +57,7 @@ bot.command('v2', (ctx) => {
 // মেসেজ থেকে নম্বর ফিল্টার ও মোড অনুযায়ী বাটন পাঠানো
 bot.on('text', async (ctx) => {
   const userId = ctx.from.id;
-  const currentMode = userModes[userId] || 'v1'; // ডিফোল্ট v1
+  const currentMode = userModes[userId] || 'v1';
   const text = ctx.message.text;
 
   // ৮ থেকে ১৫ ডিজিটের ফোন নম্বর খুঁজে বের করা
@@ -73,7 +73,7 @@ bot.on('text', async (ctx) => {
   let buttons = [];
 
   if (currentMode === 'v2') {
-    // V2: Python scripts এর মত switch_inline_query_current_chat স্টাইল
+    // V2: Python scripts-এর মতো switch_inline_query_current_chat স্টাইল
     buttons = cleanNumbers.map((num) => [
       Markup.button.switchToCurrentChat(num, num)
     ]);
@@ -94,9 +94,12 @@ bot.on('text', async (ctx) => {
   await ctx.reply('কপি করতে নিচের বাটনে চাপ দিন:', Markup.inlineKeyboard(buttons));
 });
 
-// বট স্টার্ট
-bot.launch();
-console.log('Bot running with V1 and V2 modes!');
+// বট চালু করা
+bot.launch().then(() => {
+  console.log('Telegram Bot running with V1 and V2 modes!');
+}).catch((err) => {
+  console.error('Error starting bot:', err);
+});
 
 // সেফ শাটডাউন
 process.once('SIGINT', () => bot.stop('SIGINT'));
