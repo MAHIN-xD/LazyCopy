@@ -1,70 +1,56 @@
-const { Telegraf, Markup } = require('telegraf');
+const { Telegraf } = require('telegraf');
 const express = require('express');
 
-// ১. Render-এর জন্য Express Web Server (২৪/৭ অনলাইন রাখতে)
+// ১. Render Sleep Mode ঠেকানোর জন্য Express Web Server
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.get('/', (req, res) => {
-  res.send('Instant Copy Bot is running 24/7!');
+  res.send('Bot is running ultra fast 24/7!');
 });
 
 app.listen(PORT, () => {
-  console.log(`Web server running on port ${PORT}`);
+  console.log(`Web server listening on port ${PORT}`);
 });
 
 // ২. টেলিগ্রাম বট কনফিগারেশন
 const BOT_TOKEN = '8928009450:AAF1kacThOZUMgnD9yBHSlcUvA1yINLBpGA';
 const bot = new Telegraf(BOT_TOKEN);
 
+// /start কমান্ড
 bot.start((ctx) => {
   ctx.reply('বট অ্যাক্টিভ আছে! যেকোনো মেসেজ বা অন্য বটের মেসেজ ফরওয়ার্ড করুন।');
 });
 
-// মেসেজ থেকে ফোন নম্বর বের করা এবং Instant Copy Button তৈরি করা
+// নম্বর ডিটেক্ট ও 1-Tap Copyable Text ফরম্যাট জেনারেট করা
 bot.on('text', async (ctx) => {
   const text = ctx.message.text;
 
-  // ৮ থেকে ১৫ ডিজিটের ফোন নম্বর (প্লাস চিহ্ন সহ বা ছাড়া) বের করা
+  // ৮ থেকে ১৫ ডিজিটের ফোন নম্বর (প্লাস চিহ্ন সহ বা ছাড়া) খুঁজে বের করা
   const rawNumbers = text.match(/\+?\d{8,15}/g);
 
   if (!rawNumbers || rawNumbers.length === 0) {
     return ctx.reply('কোনো ফোন নম্বর পাওয়া যায়নি।');
   }
 
-  const buttons = rawNumbers.map((num) => {
-    // '+' চিহ্ন পুরোপুরি মুছে ফেলা
-    const cleanNum = num.replace(/^\+/, '');
+  // Duplicate নম্বর ফিল্টার করে '+' বাদ দেওয়া
+  const cleanNumbers = [...new Set(rawNumbers.map((num) => num.replace(/^\+/, '')))];
 
-    // 'copy_text' অবজেক্ট ব্যবহারে অ্যাপ সরাসরি ক্লিপবোর্ডে কপি করে নেয় (০ ডিলে)
-    return [
-      Markup.button.url(
-        `📋 ${cleanNum}`, 
-        `https://t.me/` // ফলব্যাক
-      )
-    ];
+  // চাওয়া ফরম্যাট অনুযায়ী আউটপুট তৈরি
+  let responseText = '⚡ *কপি করতে নাম্বারের উপর চাপ দিন:*\n\n';
+  cleanNumbers.forEach((num, index) => {
+    // ফরম্যাট: Serial. `Number` 🟢
+    responseText += `${index + 1}\\. \`${num}\` 🟢\n`;
   });
 
-  // সরাসরি টেলিগ্রাম বট API-এর 'copy_text' কিবোর্ড তৈরি
-  const nativeCopyButtons = rawNumbers.map((num) => {
-    const cleanNum = num.replace(/^\+/, '');
-    return [
-      {
-        text: `📋 ${cleanNum}`,
-        copy_text: { text: cleanNum } // টেলিগ্রামের নেটিভ অটো-কপি ফিচার
-      }
-    ];
-  });
-
-  await ctx.reply('কপি করতে নিচের বাটনে চাপ দিন:', {
-    reply_markup: {
-      inline_keyboard: nativeCopyButtons
-    }
-  });
+  // MarkdownV2 দিয়ে রেসপন্স পাঠানো
+  await ctx.replyWithMarkdownV2(responseText);
 });
 
+// বট স্টার্ট
 bot.launch();
-console.log('Instant Copy Bot started successfully!');
+console.log('Instant Copy Bot with Green Dot is running!');
 
+// সেফ শাটডাউন
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
