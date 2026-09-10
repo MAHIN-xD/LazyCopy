@@ -1,4 +1,4 @@
-const { Telegraf } = require('telegraf');
+const { Telegraf, Markup } = require('telegraf');
 const express = require('express');
 
 // ১. Render Sleep Mode ঠেকানোর জন্য Express Web Server
@@ -17,12 +17,21 @@ app.listen(PORT, () => {
 const BOT_TOKEN = '8928009450:AAF1kacThOZUMgnD9yBHSlcUvA1yINLBpGA';
 const bot = new Telegraf(BOT_TOKEN);
 
+// নম্বরকে Unicode Bold এ রূপান্তর করার হেলপার ফাংশন
+function toBoldDigits(numStr) {
+  const boldMap = {
+    '0': '𝟬', '1': '𝟭', '2': '𝟮', '3': '𝟯', '4': '𝟰',
+    '5': '𝟱', '6': '𝟲', '7': '𝟳', '8': '𝟴', '9': '𝟡'
+  };
+  return numStr.split('').map(ch => boldMap[ch] || ch).join('');
+}
+
 // /start কমান্ড
 bot.start((ctx) => {
   ctx.reply('বট অ্যাক্টিভ আছে! যেকোনো মেসেজ বা অন্য বটের মেসেজ ফরওয়ার্ড করুন।');
 });
 
-// নম্বর ডিটেক্ট ও 1-Tap Copyable Text ফরম্যাট জেনারেট করা
+// নম্বর ডিটেক্ট ও Fast Button জেনারেট করা
 bot.on('text', async (ctx) => {
   const text = ctx.message.text;
 
@@ -36,20 +45,24 @@ bot.on('text', async (ctx) => {
   // Duplicate নম্বর ফিল্টার করে '+' বাদ দেওয়া
   const cleanNumbers = [...new Set(rawNumbers.map((num) => num.replace(/^\+/, '')))];
 
-  // চাওয়া ফরম্যাট অনুযায়ী আউটপুট তৈরি
-  let responseText = '⚡ *কপি করতে নাম্বারের উপর চাপ দিন:*\n\n';
-  cleanNumbers.forEach((num, index) => {
-    // ফরম্যাট: Serial. `Number` 🟢
-    responseText += `${index + 1}\\. \`${num}\` 🟢\n`;
+  // ইনলাইন বাটন জেনারেট করা
+  const buttons = cleanNumbers.map((num, index) => {
+    const boldNum = toBoldDigits(num);
+    // ফরম্যাট: Serial. BoldNumber 🟢
+    const buttonText = `${index + 1}. ${boldNum} 🟢`;
+
+    // copy_text ফিচারের মাধ্যমে বাটনে ক্লিক করলেই সরাসরি ক্লিপবোর্ডে কপি হয়ে যাবে
+    return [
+      Markup.button.copyText(buttonText, num)
+    ];
   });
 
-  // MarkdownV2 দিয়ে রেসপন্স পাঠানো
-  await ctx.replyWithMarkdownV2(responseText);
+  await ctx.reply('কপি করতে নিচের বাটনে চাপ দিন:', Markup.inlineKeyboard(buttons));
 });
 
 // বট স্টার্ট
 bot.launch();
-console.log('Instant Copy Bot with Green Dot is running!');
+console.log('Ultra Fast Button Copy Bot is running!');
 
 // সেফ শাটডাউন
 process.once('SIGINT', () => bot.stop('SIGINT'));
